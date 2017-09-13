@@ -4,7 +4,6 @@ require 'pry'
 
 class Scraper
 
-  CATEGORY_BASE_URL = 'http://www.shufoo.net/pntweb/categoryCompanyList/%s/'
   CATEGORIES = {
     '101' => 'supermarket',              # スーパー
     '102' => 'liquor_convenience',    # 食品･菓子･飲料･酒･日用品･コンビニ
@@ -45,7 +44,7 @@ class Scraper
 
     rows = []
     CATEGORIES.each do |id, key|
-      page = agent.get(CATEGORY_BASE_URL % id)
+      page = agent.get(category_base_url % id)
       h1 = page.at('h1')
       raise "not found h1 (id: #{id}, key: #{key})" unless h1
       count = h1.inner_text.match(/（(\d+)件）/)  ? $1.to_i : -1
@@ -55,6 +54,10 @@ class Scraper
     # binding.pry
 
     ScraperWiki.save_sqlite(['date', 'category'], rows)
+  end
+
+  def category_base_url
+    @category_base_url =|| ENV.fetch('MORPH_CATEGORY_BASE_URL')
   end
 end
 
