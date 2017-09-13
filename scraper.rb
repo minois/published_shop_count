@@ -1,6 +1,6 @@
 require 'scraperwiki'
 require 'mechanize'
-require 'pry'
+# require 'pry'
 
 class Scraper
 
@@ -42,22 +42,32 @@ class Scraper
     date = Date.today.to_s
     agent = Mechanize.new
 
-    rows = []
-    CATEGORIES.each do |id, key|
-      page = agent.get(category_base_url % id)
+    category_rows = []
+    shop_rows = []
+    CATEGORIES.each do |id, category|
+      page = agent.get(self.category_base_url % id)
       h1 = page.at('h1')
-      raise "not found h1 (id: #{id}, key: #{key})" unless h1
+      raise "not found h1 (id: #{id}, category: #{category})" unless h1
       count = h1.inner_text.match(/（(\d+)件）/)  ? $1.to_i : -1
-      rows << { 'date' => date, 'category' => key, 'count' => count }
+      category_rows << { 'date' => date, 'category' => category, 'count' => count }
+
+      if count > 0
+        shops = page.search('.list-result-02 a')
+        shops.each do |shop|
+          id = shop[:href].match(/\/([0-9-]+)\/\z/)  ? $1.to_i : -1
+          shop_rows << { 'date' => date, 'category' => category, 'id' => id, 'name' => shop.inner_text }
+        end
+      end
+
       sleep rand
     end
-    # binding.pry
 
-    ScraperWiki.save_sqlite(['date', 'category'], rows)
+    ScraperWiki.save_sqlite(['date', 'category'], category_rows, 'categories')
+    ScraperWiki.save_sqlite(['date', 'category', 'id'], shop_rows, 'category_shops')
   end
 
-  def category_base_url
-    @category_base_url =|| ENV.fetch('MORPH_CATEGORY_BASE_URL')
+  def self.category_base_url
+    @category_base_url ||= ENV.fetch('MORPH_CATEGORY_BASE_URL')
   end
 end
 
